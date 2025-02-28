@@ -72,20 +72,58 @@
 (defn make-soap-call
   "Makes a SOAP call to the DEHú service"
   [wsdl-url operation params auth-context]
-  (let [dcf (DynamicClientFactory/newInstance)
-        _ (when (:debug auth-context) (println "Creating client for" wsdl-url))
-        client (.createClient dcf wsdl-url)
+  (let [wsdl-url-with-query (if (.contains wsdl-url "?")
+                              wsdl-url
+                              (str wsdl-url "?wsdl"))
+        _ (when (:debug auth-context) (println "Creating client for" wsdl-url-with-query))
+        dcf (DynamicClientFactory/newInstance)
+        client (try 
+                 (let [bus (org.apache.cxf.BusFactory/getDefaultBus)]
+                   (.createClient dcf wsdl-url-with-query nil nil bus))
+                 (catch Exception e
+                   (println "Error creating client:" (.getMessage e))
+                   (println "Trying with simplified approach...")
+                   ;; Try with another constructor
+                   (.createClient dcf wsdl-url-with-query)))
         _ (when (:debug auth-context) (println "Configuring client"))
         _ (configure-client client auth-context)]
+    
+    ;; Set up HTTP headers required by DEHú
+    (-> client
+        (.getRequestContext)
+        (.put "org.apache.cxf.message.Message.PROTOCOL_HEADERS"
+              (doto (HashMap.)
+                (.put "Expect" (java.util.ArrayList. ["100-continue"]))
+                (.put "Content-Type" (java.util.ArrayList. ["text/xml; charset=utf-8"])))))
+    
+    ;; Set chunking to false - DEHú requires this
+    (let [http-conduit (.getConduit client)
+          client-policy (HTTPClientPolicy.)]
+      (.setAllowChunking client-policy false)
+      (.setClient http-conduit client-policy))
     
     (try
       (when (:debug auth-context) 
         (println "Calling operation:" operation)
         (println "With parameters:" params))
       
-      (let [result (if (empty? params)
+      (let [result (cond
+                     ;; No parameters
+                     (nil? params)
                      (.invoke client operation (into-array Object []))
-                     (.invoke client operation (into-array Object [params])))]
+                     
+                     ;; Empty map - treat as no parameters
+                     (and (map? params) (empty? params))
+                     (.invoke client operation (into-array Object []))
+                     
+                     ;; A single value (not a map) - pass as single parameter
+                     (not (map? params))
+                     (.invoke client operation (into-array Object [params]))
+                     
+                     ;; Parameter is a non-empty map - pass as multiple parameters
+                     :else
+                     (let [param-array (into-array Object [(into-array Object [params])])]
+                       (.invoke client operation param-array)))]
         
         (when (:debug auth-context)
           (println "Call successful, processing result"))

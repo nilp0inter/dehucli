@@ -4,12 +4,19 @@
         org.apache.cxf/cxf-rt-frontend-jaxws {:mvn/version "3.5.5"}
         org.apache.cxf/cxf-rt-transports-http {:mvn/version "3.5.5"}
         org.apache.cxf/cxf-rt-ws-security {:mvn/version "3.5.5"}
+        org.apache.cxf/cxf-rt-features-logging {:mvn/version "3.5.5"}
+        org.apache.cxf/cxf-tools-wsdlto-core {:mvn/version "3.5.5"}
+        org.apache.cxf/cxf-tools-wsdlto-databinding-jaxb {:mvn/version "3.5.5"}
+        org.apache.cxf/cxf-tools-wsdlto-frontend-jaxws {:mvn/version "3.5.5"}
         org.apache.wss4j/wss4j-ws-security-common {:mvn/version "2.4.1"}
         org.apache.wss4j/wss4j-ws-security-dom {:mvn/version "2.4.1"}
         com.sun.xml.bind/jaxb-impl {:mvn/version "2.3.5"}
         com.sun.xml.bind/jaxb-xjc {:mvn/version "2.3.5"}
+        com.sun.xml.bind/jaxb-core {:mvn/version "2.3.0"}
+        javax.xml.ws/jaxws-api {:mvn/version "2.3.1"}
         org.bouncycastle/bcprov-jdk18on {:mvn/version "1.74"}
-        org.bouncycastle/bcpkix-jdk18on {:mvn/version "1.74"}}
+        org.bouncycastle/bcpkix-jdk18on {:mvn/version "1.74"}
+        org.slf4j/slf4j-simple {:mvn/version "1.7.36"}}
  
  :aliases 
  {:run {:main-opts ["-m" "dehucli.core"]}

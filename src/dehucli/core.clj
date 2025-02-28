@@ -86,8 +86,21 @@
   "Makes a SOAP call to DEHú service"
   [wsdl-url operation params certificate private-key]
   (println (str "Calling operation: " operation " at " wsdl-url))
-  (let [dcf (DynamicClientFactory/newInstance)
-        client (.createClient dcf wsdl-url)]
+  
+  ;; Add WSDL URL query parameter if missing
+  (let [wsdl-url-with-query (if (.contains wsdl-url "?")
+                              wsdl-url
+                              (str wsdl-url "?wsdl"))
+        _ (println "Using WSDL URL:" wsdl-url-with-query)
+        dcf (DynamicClientFactory/newInstance)
+        client (try 
+                 (let [bus (org.apache.cxf.BusFactory/getDefaultBus)]
+                   (.createClient dcf wsdl-url-with-query nil nil bus))
+                 (catch Exception e
+                   (println "Error creating client:" (.getMessage e))
+                   (println "Trying with simplified approach...")
+                   ;; Try with another constructor
+                   (.createClient dcf wsdl-url-with-query)))]
     
     ;; Setup WS-Security if certificate and key are provided
     (when (and certificate private-key)
@@ -96,18 +109,43 @@
     ;; Set up timeout
     (doto client
       (.getRequestContext)
-      (.put "javax.xml.ws.client.connectionTimeout" (Integer. 30000))
-      (.put "javax.xml.ws.client.receiveTimeout" (Integer. 60000)))
+      (.put "javax.xml.ws.client.connectionTimeout" (Integer. 60000))
+      (.put "javax.xml.ws.client.receiveTimeout" (Integer. 60000))
+      ;; Add HTTP headers
+      (.put "org.apache.cxf.message.Message.PROTOCOL_HEADERS"
+           (doto (java.util.HashMap.)
+             (.put "Expect" (java.util.ArrayList. ["100-continue"]))
+             (.put "Content-Type" (java.util.ArrayList. ["text/xml; charset=utf-8"])))))
+    
+    ;; Set chunking
+    (let [http-conduit (.getConduit client)
+          http-client-policy (org.apache.cxf.transports.http.configuration.HTTPClientPolicy.)]
+      (.setAllowChunking http-client-policy false)
+      (.setClient http-conduit http-client-policy))
     
     (try
-      (let [result (if (empty? params)
-                     (.invoke client operation (into-array Object []))
-                     (.invoke client operation 
-                              (into-array Object 
-                                          [params])))]
+      (let [result (cond
+                    ;; No parameters
+                    (nil? params)
+                    (.invoke client operation (into-array Object []))
+                    
+                    ;; Empty map - treat as no parameters
+                    (and (map? params) (empty? params))
+                    (.invoke client operation (into-array Object []))
+                    
+                    ;; A single value (not a map) - pass as single parameter
+                    (not (map? params))
+                    (.invoke client operation (into-array Object [params]))
+                    
+                    ;; Parameter is a non-empty map - pass as multiple parameters
+                    :else
+                    (let [param-array (into-array Object [params])]
+                      (.invoke client operation param-array)))]
         {:success true :result result})
       (catch Exception e
         (println (.getMessage e))
+        (println "Stack trace:")
+        (.printStackTrace e)
         {:success false :error (.getMessage e)}))))
 
 ;; Command implementations
