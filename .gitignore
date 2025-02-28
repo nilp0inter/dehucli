@@ -3,7 +3,6 @@
 ### Created by https://www.gitignore.io
 ### direnv ###
 .direnv
-.envrc
 
 ### Clojure ###
 pom.xml
@@ -67,3 +66,13 @@ Sessionx.vim
 tags
 # Persistent undo
 [._]*.un~
+
+# Devenv
+.devenv*
+devenv.local.nix
+
+# direnv
+.direnv
+
+# pre-commit
+.pre-commit-config.yaml
