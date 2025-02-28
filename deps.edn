@@ -1,7 +1,27 @@
 {:paths ["src"]
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}
+        org.clojure/tools.cli {:mvn/version "1.0.219"}
         org.apache.cxf/cxf-rt-frontend-jaxws {:mvn/version "3.5.5"}
         org.apache.cxf/cxf-rt-transports-http {:mvn/version "3.5.5"}
+        org.apache.cxf/cxf-rt-ws-security {:mvn/version "3.5.5"}
+        org.apache.wss4j/wss4j-ws-security-common {:mvn/version "2.4.1"}
+        org.apache.wss4j/wss4j-ws-security-dom {:mvn/version "2.4.1"}
         com.sun.xml.bind/jaxb-impl {:mvn/version "2.3.5"}
-        com.sun.xml.bind/jaxb-xjc {:mvn/version "2.3.5"}}
- :aliases {:run {:main-opts ["-m" "dehucli.core"]}}}
+        com.sun.xml.bind/jaxb-xjc {:mvn/version "2.3.5"}
+        org.bouncycastle/bcprov-jdk18on {:mvn/version "1.74"}
+        org.bouncycastle/bcpkix-jdk18on {:mvn/version "1.74"}}
+ 
+ :aliases 
+ {:run {:main-opts ["-m" "dehucli.core"]}
+  
+  :build {:deps {io.github.clojure/tools.build {:mvn/version "0.9.6"}}
+          :ns-default build}
+  
+  :native-image {:main-opts ["-m" "clj.native-image" "dehucli.core"
+                              "--initialize-at-build-time"]}
+  
+  :uberjar {:replace-deps {com.github.seancorfield/depstar {:mvn/version "2.1.303"}}
+            :exec-fn hf.depstar/uberjar
+            :exec-args {:jar "dehucli.jar" 
+                        :aot true
+                        :main-class "dehucli.core"}}}}
